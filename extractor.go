@@ -12,37 +12,32 @@ import (
 	"time"
 )
 
-// Run shell commands and return output as a list of strings
+// Execute a shell command and return its output as a slice of strings
 func runCommand(command string, args ...string) []string {
 	cmd := exec.Command(command, args...)
 	output, err := cmd.Output()
 	if err != nil {
-		fmt.Printf("[!] Error running %s: %v\n", command, err)
+		fmt.Printf("[!] Error executing %s: %v\n", command, err)
 		return nil
 	}
-	lines := strings.Split(string(output), "\n")
-	return lines
+	return strings.Split(string(output), "\n")
 }
 
-// Fetch JavaScript URLs using various tools
+// Extract JavaScript URLs from multiple sources
 func extractJSUrls(domain string) []string {
-	fmt.Printf("[*] Fetching URLs for %s...\n", domain)
+	fmt.Printf("[*] Fetching JavaScript URLs for %s...\n", domain)
 
-	// Get URLs from multiple sources
+	// Retrieve URLs using different tools
 	waybackUrls := runCommand("waybackurls", domain)
 	gauUrls := runCommand("gau", domain)
 	katanaUrls := runCommand("katana", "-u", "https://"+domain, "-jc")
 
-	// Merge results
-	allUrls := append(waybackUrls, gauUrls...)
-	allUrls = append(allUrls, katanaUrls...)
-
-	// Filter for JavaScript files
+	// Combine results and filter JavaScript files
 	jsRegex := regexp.MustCompile(`(?i)\.js(\?|$)`)
 	var jsUrls []string
 	seen := make(map[string]bool)
 
-	for _, url := range allUrls {
+	for _, url := range append(append(waybackUrls, gauUrls...), katanaUrls...) {
 		if jsRegex.MatchString(url) && !seen[url] {
 			jsUrls = append(jsUrls, url)
 			seen[url] = true
@@ -52,7 +47,7 @@ func extractJSUrls(domain string) []string {
 	return jsUrls
 }
 
-// Fetch JavaScript file content
+// Fetch the content of a JavaScript file
 func fetchJSContent(url string) string {
 	client := &http.Client{Timeout: 10 * time.Second}
 	resp, err := client.Get(url)
@@ -64,18 +59,18 @@ func fetchJSContent(url string) string {
 
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		fmt.Printf("[!] Failed to read content: %s\n", url)
+		fmt.Printf("[!] Failed to read content from: %s\n", url)
 		return ""
 	}
 
 	return string(body)
 }
 
-// Extract sensitive data from JavaScript content
+// Extract potential sensitive data from JavaScript content
 func extractSensitiveData(jsContent string) map[string][]string {
 	sensitiveData := make(map[string][]string)
 
-	// Define regex patterns
+	// Define regex patterns for sensitive information
 	patterns := map[string]string{
 		"API Keys":       `(?i)(?:api_key|apikey|key)["'\s:]*[:=]["'\s]*([A-Za-z0-9-_]{20,})`,
 		"Bearer Tokens":  `(?i)bearer\s+([A-Za-z0-9-_=]+)`,
@@ -84,7 +79,7 @@ func extractSensitiveData(jsContent string) map[string][]string {
 		"Secrets":        `(?i)secret["'\s:]*[:=]["'\s]*([A-Za-z0-9-_=]{20,})`,
 	}
 
-	// Apply regex and store results
+	// Apply regex patterns to extract sensitive data
 	for key, pattern := range patterns {
 		re := regexp.MustCompile(pattern)
 		matches := re.FindAllString(jsContent, -1)
@@ -106,12 +101,12 @@ func main() {
 
 	var subdomains []string
 
-	// Handle single subdomain input
+	// Process single subdomain input
 	if os.Args[1] == "-s" {
 		subdomains = append(subdomains, os.Args[2])
 	}
 
-	// Handle list input
+	// Process multiple subdomains from a file
 	if os.Args[1] == "-l" {
 		file, err := os.Open(os.Args[2])
 		if err != nil {
@@ -126,7 +121,7 @@ func main() {
 		}
 	}
 
-	// Extract and analyze JS files
+	// Extract and analyze JavaScript files
 	for _, domain := range subdomains {
 		jsUrls := extractJSUrls(domain)
 		if len(jsUrls) == 0 {
@@ -134,7 +129,7 @@ func main() {
 			continue
 		}
 
-		fmt.Printf("[+] Found %d JS files for %s:\n", len(jsUrls), domain)
+		fmt.Printf("[+] Found %d JavaScript files for %s:\n", len(jsUrls), domain)
 		for _, jsUrl := range jsUrls {
 			fmt.Println("  -", jsUrl)
 
