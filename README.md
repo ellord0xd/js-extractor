@@ -18,3 +18,26 @@ git clone https://github.com/ellord0xd/js-extractor.git
 cd js-extractor
 go mod tidy
 go build -o js-extractor
+
+## 🎯 Usage  
+
+To extract JavaScript files from a domain:  
+
+```sh
+./js-extractor -s example.com
+
+
+To analyze extracted files for sensitive data:
+
+./js-extractor -s example.com -analyze
+
+
+📌 Dependencies
+Go 1.19+
+
+katana for crawling
+
+httpx for requests
+
+
+
